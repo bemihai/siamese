@@ -8,19 +8,19 @@ from torch.backends import cudnn
 
 from datasets import BalancedPairs
 from trainer import train, test, oneshot
-from networks import Embedding
+from networks import FeatureExtractor, SiameseNetBin
 
 cudnn.benchmark = True
 do_learn = True
 batch_size = 256
 lr = 0.01
-num_epochs = 5
+num_epochs = 10
 weight_decay = 0.0001
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# TODO: change normalization ?
-trans = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (1.0,))])
-model = Embedding().to(device)
+trans = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+feature_extractor = FeatureExtractor()
+model = SiameseNetBin(feature_extractor).to(device)
 
 def main():
 
@@ -44,7 +44,7 @@ def main():
     else:  # prediction mode
         testing_data = BalancedPairs('../data', n_pairs=100, train=False, transform=trans, save_pairs=True)
         prediction_loader = torch.utils.data.DataLoader(testing_data, batch_size=1, shuffle=True)
-        model.load_state_dict(torch.load('models/siamese.pt'))
+        model.load_state_dict(torch.load('../models/siamese.pt'))
         data = []
         data.extend(next(iter(prediction_loader))[0][:3:2])
         same = oneshot(model, device, data)

@@ -1,35 +1,122 @@
+""" Network architectures """
+
 import torch
 from torch import nn
 import torch.nn.functional as F
 
-# TODO: add batch normalization
-# TODO: keep only the embedding network here
-class Embedding(nn.Module):
+
+class FeatureExtractor(nn.Module):
+    """ Basic convnet for feature extraction """
+
     def __init__(self):
-        super(Embedding, self).__init__()
-        self.conv1 = nn.Conv2d(1, 64, 7)
-        self.pool1 = nn.MaxPool2d(2)
-        self.conv2 = nn.Conv2d(64, 128, 5)
-        self.conv3 = nn.Conv2d(128, 256, 5)
-        self.linear1 = nn.Linear(2304, 512)
-        self.linear2 = nn.Linear(512, 2)
+        super(FeatureExtractor, self).__init__()
+        self.convnet = nn.Sequential(
+            nn.Conv2d(1, 32, 5), nn.BatchNorm2d(32), nn.PReLU(),
+            nn.MaxPool2d(2, stride=2),
+            nn.Conv2d(32, 64, 5), nn.BatchNorm2d(64), nn.PReLU(),
+            nn.MaxPool2d(2, stride=2),
+        )
+        self.fc = nn.Sequential(
+            nn.Linear(64*4*4, 512), nn.BatchNorm1d(512), nn.PReLU(),
+            nn.Linear(512, 256), nn.BatchNorm1d(256), nn.PReLU(),
+            nn.Linear(256, 2)
+        )
 
-    def forward(self, data):
-        res = []
-        for i in range(2):  # sharing weights
-            x = data[i]
-            x = self.conv1(x)
-            x = F.relu(x)
-            x = self.pool1(x)
-            x = self.conv2(x)
-            x = F.relu(x)
-            x = self.conv3(x)
-            x = F.relu(x)
+    def forward(self, x):
+        out = self.convnet(x)
+        out = out.view(out.shape[0], -1)
+        out = self.fc(out)
+        return out
 
-            x = x.view(x.shape[0], -1)
-            x = self.linear1(x)
-            res.append(F.relu(x))
+    def get_features(self, x):
+        return self.forward(x)
 
-        res = torch.abs(res[1] - res[0])
-        res = self.linear2(res)
-        return res
+
+class ClassificationNet(nn.Module):
+    """
+    Baseline classification net: add a fully-connected layer with the number of classes and
+    train the feature extractor for classification with softmax and cross-entropy.
+    """
+    def __init__(self, feature_extractor, n_classes):
+        super(ClassificationNet, self).__init__()
+        self.extractor = feature_extractor
+        self.n_classes = n_classes
+        self.activation = nn.PReLU()
+        self.linear = nn.Linear(2, n_classes)
+
+    def forward(self, x):
+        out = self.extractor(x)
+        out = self.activation(out)
+        out = self.linear(out)
+        out = F.log_softmax(out, dim=-1)
+        return out
+
+    # extract 2-dim features from penultimate layer
+    def get_features(self, x):
+        self.activation(self.extractor(x))
+
+
+class SiameseNetCont(nn.Module):
+    """
+     Siamese net: takes a pair of images and trains the feature extractor to minimize the contrastive loss function.
+    """
+
+    def __init__(self, feature_extractor):
+        super(SiameseNetCont, self).__init__()
+        self.extractor = feature_extractor
+
+    def forward(self, x1, x2):
+        out_1 = self.extractor(x1)
+        out_2 = self.extractor(x2)
+        return out_1, out_2
+
+    def get_features(self, x):
+        return self.extractor(x)
+
+
+class SiameseNetBin(nn.Module):
+    """
+     Siamese net: takes a pair of images and trains the feature extractor to minimize
+     the binary cross-entropy loss function.
+    """
+
+    def __init__(self, feature_extractor):
+        super(SiameseNetBin, self).__init__()
+        self.extractor = feature_extractor
+        self.activation = nn.PReLU()
+        self.linear = nn.Linear(2, 2)
+
+    def forward(self, x1, x2):
+        out_1 = self.extractor(x1)
+        out_2 = self.extractor(x2)
+        out = torch.abs(out_2 - out_1)
+        out = self.linear(out)
+        return out
+
+
+class SiameseNetTrip(nn.Module):
+    """
+    Siamese net: takes an image triplet (anchor, positive, negative) and trains the feature extractor to
+    minimize the triplet loss function, i.e. the anchor is closer to the positive example than it is to
+    the negative example by some margin value.
+    """
+
+    def __init__(self, feature_extractor):
+        super(SiameseNetTrip, self).__init__()
+        self.extractor = feature_extractor
+
+    def forward(self, x1, x2, x3):
+        out_1 = self.extractor(x1)
+        out_2 = self.extractor(x2)
+        out_3 = self.extractor(x3)
+        return out_1, out_2, out_3
+
+    def get_features(self, x):
+        return self.extractor(x)
+
+
+
+
+
+
+

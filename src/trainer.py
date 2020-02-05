@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 
+# TODO: implement contrastive/triplet loss
 def train(model, device, train_loader, batch_size, epoch, optimizer):
     model.train()
 
@@ -9,17 +10,16 @@ def train(model, device, train_loader, batch_size, epoch, optimizer):
             data[i] = data[i].to(device).float()
 
         optimizer.zero_grad()
-        output_positive = model(data[:2])             # data[0, 1]
-        output_negative = model(data[0:3:2])          # data[0, 2]
+        output_positive = model(data[0], data[1])             # data[0, 1]
+        output_negative = model(data[0], data[2])          # data[0, 2]
 
         target = target.type(torch.LongTensor).to(device)
         target_positive = torch.squeeze(target[:, 0])
         target_negative = torch.squeeze(target[:, 1])
 
-        # TODO: implement contrastive/triplet loss
         loss_positive = F.cross_entropy(output_positive, target_positive)
         loss_negative = F.cross_entropy(output_negative, target_negative)
-        # binary verification loss
+        # binary cross-entropy loss
         loss = loss_positive + loss_negative
         loss.backward()
 
@@ -43,8 +43,8 @@ def test(model, device, test_loader):
             for i in range(len(data)):
                 data[i] = data[i].to(device).float()
 
-            output_positive = model(data[:2])
-            output_negative = model(data[0:3:2])
+            output_positive = model(data[0], data[1])
+            output_negative = model(data[0], data[2])
 
             target = target.type(torch.LongTensor).to(device)
             target_positive = torch.squeeze(target[:, 0])
@@ -66,6 +66,7 @@ def test(model, device, test_loader):
         print('Test accuracy: {}/{} ({:.3f}%)\tLoss: {:.6f}'.format(accurate_labels, all_labels, accuracy, loss))
 
 
+# TODO: rewrite to get 2 images as input
 def oneshot(model, device, data):
     model.eval()
 
