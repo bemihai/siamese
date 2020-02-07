@@ -1,78 +1,110 @@
 import torch
+import numpy as np
 import torch.nn.functional as F
 
-# TODO: implement contrastive/triplet loss
-def train(model, device, train_loader, batch_size, epoch, optimizer):
+def fit(train_loader, val_loader, model, loss_fn, optimizer, n_epochs, device, log_interval, metrics=None):
+    """
+    Loaders, model, loss function and metrics should work together for a given task,
+    i.e. the model should be able to process data output of loaders,
+    loss function should process target output of loaders and outputs from the model
+    Examples:
+    Classification: batch loader, classification model, NLL loss, accuracy metric.
+    Siamese network: Siamese loader, siamese model, contrastive loss.
+    Online triplet learning: batch loader, embedding model, online triplet loss.
+    """
+    for epoch in range(n_epochs):
+        # training step: compute training average loss and metrics
+        train_loss, train_metrics = train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, metrics)
+        # train_loss /= len(train_loader)  # TODO: check what loss is returned
+        message = 'Epoch: {}/{}. Training average loss: {:.4f}'.format(epoch + 1, n_epochs, train_loss)
+        for metric in train_metrics:
+            message += '\t{}: {}'.format(metric.name(), metric.value())
+        # validation step: compute validation average loss and metrics
+        val_loss, val_metrics = test_epoch(val_loader, model, loss_fn, device, metrics)
+        val_loss /= len(val_loader)  # TODO: check what loss is returned
+        message += '\nEpoch: {}/{}. Validation average loss: {:.4f}'.format(epoch + 1, n_epochs, val_loss)
+        for metric in val_metrics:
+            message += '\t{}: {}'.format(metric.name(), metric.value())
+        print(message)
+
+def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, metrics=None):
+    # reset metrics values before starting new computation
+    if metrics:
+        for metric in metrics:
+            metric.reset()
+    # set model in training mode
     model.train()
+    total_loss = 0
+    losses = []
 
     for batch_idx, (data, target) in enumerate(train_loader):
-        for i in range(len(data)):
-            data[i] = data[i].to(device).float()
+        # data and target must be a tuples
+        target = (target.to(device),) if len(target) > 0 else None
+        if type(data) not in (tuple, list):
+            data = (data,)
+        data = tuple(d.to(device) for d in data)
 
         optimizer.zero_grad()
-        output_positive = model(data[0], data[1])             # data[0, 1]
-        output_negative = model(data[0], data[2])          # data[0, 2]
+        outputs = model(*data)
 
-        target = target.type(torch.LongTensor).to(device)
-        target_positive = torch.squeeze(target[:, 0])
-        target_negative = torch.squeeze(target[:, 1])
+        loss_inputs = outputs
+        if target is not None:
+            loss_inputs += target
 
-        loss_positive = F.cross_entropy(output_positive, target_positive)
-        loss_negative = F.cross_entropy(output_negative, target_negative)
-        # binary cross-entropy loss
-        loss = loss_positive + loss_negative
+        loss_outputs = loss_fn(*loss_inputs)
+        loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
+        losses.append(loss.item())
+        total_loss += loss.item()
+
         loss.backward()
-
         optimizer.step()
 
-        if batch_idx % 10 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * batch_size, len(train_loader.dataset),
-                       100. * batch_idx * batch_size / len(train_loader.dataset),
-                loss.item()))
+        for metric in metrics:
+            target = target[0] if type(target) in (tuple, list) else target
+            metric(outputs, target, loss_outputs)
+
+        if batch_idx % log_interval == 0:
+            message = 'Train: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                batch_idx * len(data[0]), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), np.mean(losses))
+            for metric in metrics:
+                message += '\t{}: {}'.format(metric.name(), metric.value())
+            # print(message)
+            losses = []
+
+    total_loss /= (batch_idx + 1)  # TODO: check loss
+    return total_loss, metrics
 
 
-def test(model, device, test_loader):
+def test_epoch(val_loader, model, loss_fn, device, metrics=None):
     model.eval()
-
     with torch.no_grad():
-        accurate_labels = 0
-        all_labels = 0
-        loss = 0
-        for batch_idx, (data, target) in enumerate(test_loader):
-            for i in range(len(data)):
-                data[i] = data[i].to(device).float()
+        for metric in metrics:
+            metric.reset()
+        val_loss = 0
 
-            output_positive = model(data[0], data[1])
-            output_negative = model(data[0], data[2])
+        for batch_idx, (data, target) in enumerate(val_loader):
+            target = (target.to(device),) if len(target) > 0 else None
+            if type(data) not in (tuple, list):
+                data = (data,)
+            data = tuple(d.to(device) for d in data)
 
-            target = target.type(torch.LongTensor).to(device)
-            target_positive = torch.squeeze(target[:, 0])
-            target_negative = torch.squeeze(target[:, 1])
+            outputs = model(*data)
+            if type(outputs) not in (tuple, list):
+                outputs = (outputs,)
+            loss_inputs = outputs
 
-            loss_positive = F.cross_entropy(output_positive, target_positive)
-            loss_negative = F.cross_entropy(output_negative, target_negative)
+            if target:
+                loss_inputs += target
 
-            # identity loss + triplet loss
-            loss = loss + loss_positive + loss_negative
+            loss_outputs = loss_fn(*loss_inputs)
+            loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
+            val_loss += loss.item()
 
-            accurate_labels_positive = torch.sum(torch.argmax(output_positive, dim=1) == target_positive).cpu()
-            accurate_labels_negative = torch.sum(torch.argmax(output_negative, dim=1) == target_negative).cpu()
+            for metric in metrics:
+                target = target[0] if type(target) in (tuple, list) else target
+                metric(outputs, target, loss_outputs)
 
-            accurate_labels = accurate_labels + accurate_labels_positive + accurate_labels_negative
-            all_labels = all_labels + len(target_positive) + len(target_negative)
-
-        accuracy = 100. * accurate_labels / all_labels
-        print('Test accuracy: {}/{} ({:.3f}%)\tLoss: {:.6f}'.format(accurate_labels, all_labels, accuracy, loss))
+    return val_loss, metrics
 
 
-# TODO: rewrite to get 2 images as input
-def oneshot(model, device, data):
-    model.eval()
-
-    with torch.no_grad():
-        for i in range(len(data)):
-            data[i] = data[i].to(device).float()
-
-        output = model(data)
-        return torch.squeeze(torch.argmax(output, dim=1)).cpu().item()

@@ -49,7 +49,7 @@ class ClassificationNet(nn.Module):
         out = self.activation(out)
         out = self.linear(out)
         out = F.log_softmax(out, dim=-1)
-        return out
+        return out,
 
     # extract 2-dim features from penultimate layer
     def get_features(self, x):
@@ -58,7 +58,8 @@ class ClassificationNet(nn.Module):
 
 class SiameseNetCont(nn.Module):
     """
-     Siamese net: takes a pair of images and trains the feature extractor to minimize the contrastive loss function.
+     Contrastive siamese net: takes a pair of images and trains the feature extractor to minimize
+     the contrastive loss function.
     """
 
     def __init__(self, feature_extractor):
@@ -76,8 +77,8 @@ class SiameseNetCont(nn.Module):
 
 class SiameseNetBin(nn.Module):
     """
-     Siamese net: takes a pair of images and trains the feature extractor to minimize
-     the binary cross-entropy loss function.
+     Binary siamese net: takes an image triplet (anchor, positive, negative) and
+     trains the feature extractor to minimize the balanced binary cross-entropy loss function.
     """
 
     def __init__(self, feature_extractor):
@@ -86,12 +87,13 @@ class SiameseNetBin(nn.Module):
         self.activation = nn.PReLU()
         self.linear = nn.Linear(2, 2)
 
-    def forward(self, x1, x2):
-        out_1 = self.extractor(x1)
-        out_2 = self.extractor(x2)
-        out = torch.abs(out_2 - out_1)
-        out = self.linear(out)
-        return out
+    def forward(self, x1, x2, x3):
+        out_1 = self.activation(self.extractor(x1))
+        out_2 = self.activation(self.extractor(x2))
+        out_3 = self.activation(self.extractor(x3))
+        positive = self.linear(torch.abs(out_2 - out_1))
+        negative = self.linear(torch.abs(out_3 - out_1))
+        return positive, negative
 
 
 class SiameseNetTrip(nn.Module):

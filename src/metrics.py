@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 
 class Metric:
@@ -18,13 +19,13 @@ class Metric:
         raise NotImplementedError
 
 
-class AccumulatedAccuracyMetric(Metric):
+class AccumulatedAccuracy(Metric):
     """
-    Works with classification model
+    Works with classification model.
     """
 
     def __init__(self):
-        super(AccumulatedAccuracyMetric, self).__init__()
+        super(AccumulatedAccuracy, self).__init__()
         self.correct = 0
         self.total = 0
 
@@ -45,13 +46,41 @@ class AccumulatedAccuracyMetric(Metric):
         return 'Accuracy'
 
 
-class AverageNonzeroTripletsMetric(Metric):
+class BinAccumulatedAccuracy(Metric):
+    """ Works with binary siamese network """
+
+    def __init__(self):
+        super(BinAccumulatedAccuracy, self).__init__()
+        self.correct = 0
+        self.total = 0
+
+    def __call__(self, outputs, target, loss):
+        target_positive = torch.squeeze(target[:, 0])
+        target_negative = torch.squeeze(target[:, 1])
+        acc_positive = torch.sum(torch.argmax(outputs[0], dim=1) == target_positive).cpu()
+        acc_negative = torch.sum(torch.argmax(outputs[1], dim=1) == target_negative).cpu()
+        self.correct += acc_positive + acc_negative
+        self.total += target_positive.size(0) + target_negative.size(0)
+        return self.value()
+
+    def reset(self):
+        self.correct = 0
+        self.total = 0
+
+    def value(self):
+        return 100 * float(self.correct) / self.total
+
+    def name(self):
+        return 'Accuracy'
+
+
+class AverageNonzeroTriplets(Metric):
     """
     Counts average number of nonzero triplets found in minibatches.
     """
 
     def __init__(self):
-        super(AverageNonzeroTripletsMetric, self).__init__()
+        super(AverageNonzeroTriplets, self).__init__()
         self.values = []
 
     def __call__(self, outputs, target, loss):

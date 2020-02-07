@@ -15,11 +15,11 @@ class ContrastiveLoss(nn.Module):
         self.margin = margin
         self.eps = 1e-9
 
-    def forward(self, output1, output2, target, size_average=True):
+    def forward(self, output1, output2, target, average=True):
         distances = (output2 - output1).pow(2).sum(1)  # squared distances
         losses = 0.5 * (target.float() * distances +
                         (1 + -1 * target).float() * F.relu(self.margin - (distances + self.eps).sqrt()).pow(2))
-        return losses.mean() if size_average else losses.sum()
+        return losses.mean() if average else losses.sum()
 
 
 class TripletLoss(nn.Module):
@@ -32,12 +32,31 @@ class TripletLoss(nn.Module):
         super(TripletLoss, self).__init__()
         self.margin = margin
 
-    def forward(self, anchor, positive, negative, size_average=True):
+    def forward(self, anchor, positive, negative, average=True):
         distance_positive = (anchor - positive).pow(2).sum(1)  # .pow(.5)
         distance_negative = (anchor - negative).pow(2).sum(1)  # .pow(.5)
         losses = F.relu(distance_positive - distance_negative + self.margin)
-        return losses.mean() if size_average else losses.sum()
+        return losses.mean() if average else losses.sum()
 
+
+class BalancedBCELoss(nn.Module):
+    """
+    Balanced binary cross entropy loss function.
+    Takes differential embeddings of a positive pair and a negative pair.
+    The differential embedding of a pair is the squared distance of the corresponding embeddings.
+    """
+    
+    def __init__(self):
+        super(BalancedBCELoss, self).__init__()
+    
+    def forward(self, positive, negative, target, average=True):
+        target_positive = torch.squeeze(target[:, 0])
+        target_negative = torch.squeeze(target[:, 1])
+        loss_positive = F.cross_entropy(positive, target_positive)
+        loss_negative = F.cross_entropy(negative, target_negative)
+        losses = loss_positive + loss_negative
+        return losses.mean() if average else losses.sum()
+    
 
 class OnlineContrastiveLoss(nn.Module):
     """
