@@ -26,6 +26,8 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, n_epochs, device, l
         for metric in val_metrics:
             message += '\t{}: {}'.format(metric.name(), metric.value())
         print(message)
+        # save trained weights
+
 
 def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, metrics=None):
     # reset metrics values before starting new computation

@@ -16,7 +16,7 @@ cudnn.benchmark = True
 do_learn = True
 batch_size = 256
 lr = 0.01
-n_epochs = 10
+n_epochs = 20
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
