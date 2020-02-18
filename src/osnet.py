@@ -221,7 +221,7 @@ class OSNet(nn.Module):
     def __init__(
             self,
             blocks,                            # osnet bottlenecks
-            layers,                            # TODO: nr of osnet blocks at each layer ?
+            layers,                            # nr of osnet blocks at each layer
             channels,                          # nr of output channels at each layer
             feature_dim=512,                   # learned features size
             **kwargs
@@ -234,7 +234,7 @@ class OSNet(nn.Module):
 
         # conv1: conv + max pooling
         # paper sizes: (3, 256, 128) -> (64, 128, 64) -> (64, 64, 32)
-        self.conv1 = ConvLayer(3, channels[0], 7, stride=2, padding=3)
+        self.conv1 = ConvLayer(1, channels[0], 7, stride=2, padding=3)
         self.maxpool = nn.MaxPool2d(3, stride=2, padding=1)
 
         # conv2: osnet bottlenecks + transition layer (1x1 conv + average pooling)
@@ -335,5 +335,7 @@ class OSNet(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
+
+
 
 

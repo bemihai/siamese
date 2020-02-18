@@ -37,12 +37,12 @@ class ClassificationNet(nn.Module):
     Baseline classification net: add a fully-connected layer with the number of classes and
     train the feature extractor for classification with softmax and cross-entropy.
     """
-    def __init__(self, feature_extractor, n_classes):
+    def __init__(self, feature_extractor, feature_dim, n_classes):
         super(ClassificationNet, self).__init__()
         self.extractor = feature_extractor
         self.n_classes = n_classes
         self.activation = nn.PReLU()
-        self.linear = nn.Linear(2, n_classes)
+        self.linear = nn.Linear(feature_dim, n_classes)
 
     def forward(self, x):
         out = self.extractor(x)
