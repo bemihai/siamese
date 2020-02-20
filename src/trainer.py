@@ -62,7 +62,7 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
         optimizer.step()
 
         for metric in metrics:
-            target = target[0] if type(target) in (tuple, list) else target
+            # target = target[0] if type(target) in (tuple, list) else target
             metric(outputs, target, loss_outputs)
 
         if batch_idx % log_interval == 0:
@@ -74,7 +74,7 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
             # print(message)
             losses = []
 
-    total_loss /= (batch_idx + 1)  # TODO: check loss
+    total_loss /= batch_idx + 1  # TODO: check loss
     return total_loss, metrics
 
 
@@ -104,7 +104,7 @@ def test_epoch(val_loader, model, loss_fn, device, metrics=None):
             val_loss += loss.item()
 
             for metric in metrics:
-                target = target[0] if type(target) in (tuple, list) else target
+                # target = target[0] if type(target) in (tuple, list) else target
                 metric(outputs, target, loss_outputs)
 
     return val_loss, metrics

@@ -8,14 +8,14 @@ from torch.backends import cudnn
 
 from src.datapairs import BalancedPairs, RandomPairs, Triplets
 from src.trainer import fit
-from src.networks import FeatureExtractor, SiameseNetBin, ClassificationNet, SiameseNetCont, SiameseNetTrip
+from src.networks import FeatureExtractor, SiameseNetBin, ClassificationNet, SiameseNetCont, TripletNet
 from src.osnet import OSBlock, OSNet
 from src.losses import BalancedBCELoss, ContrastiveLoss, TripletLoss
-from src.metrics import BinAccumulatedAccuracy, AccumulatedAccuracy
+from src.metrics import BinAccumulatedAccuracy, AccumulatedAccuracy, ContrastiveAccuracy, AverageNonzeroTriplets
 
 cudnn.benchmark = True
 do_learn = True
-batch_size = 256
+batch_size = 128
 lr = 0.01
 n_epochs = 10
 
@@ -25,8 +25,6 @@ transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1
 
 mnist_training = datasets.MNIST('data/', train=True, download=True, transform=transform)
 mnist_testing = datasets.MNIST('data/', train=False, download=True, transform=transform)
-
-# TODO: implement metrics
 
 def fit_cross_entropy():
     # feature_extractor = FeatureExtractor()
@@ -46,7 +44,7 @@ def fit_cross_entropy():
         n_epochs=n_epochs,
         device=device,
         log_interval=10,
-        metrics=[],
+        metrics=[AccumulatedAccuracy()],
     )
 
     torch.save(model.state_dict(), 'models/cross_entropy_osnet.pt')
@@ -72,7 +70,7 @@ def fit_contrastive_loss():
         n_epochs=n_epochs,
         device=device,
         log_interval=10,
-        metrics=[],
+        metrics=[ContrastiveAccuracy()],
     )
 
     torch.save(model.state_dict(), 'models/contrastive_loss.pt')
@@ -98,7 +96,7 @@ def fit_bce_loss():
         n_epochs=n_epochs,
         device=device,
         log_interval=10,
-        metrics=[],
+        metrics=[BinAccumulatedAccuracy()],
     )
 
     torch.save(model.state_dict(), 'models/bce_loss.pt')
@@ -106,7 +104,7 @@ def fit_bce_loss():
 
 def fit_triplet_loss():
     feature_extractor = FeatureExtractor()
-    model = SiameseNetTrip(feature_extractor).to(device)
+    model = TripletNet(feature_extractor).to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     training_data = Triplets(mnist_training)
@@ -124,7 +122,7 @@ def fit_triplet_loss():
         n_epochs=n_epochs,
         device=device,
         log_interval=10,
-        metrics=[],
+        metrics=[AverageNonzeroTriplets()],
     )
 
     torch.save(model.state_dict(), 'models/triplet_loss.pt')

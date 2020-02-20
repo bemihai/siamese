@@ -96,7 +96,7 @@ class SiameseNetBin(nn.Module):
         return positive, negative
 
 
-class SiameseNetTrip(nn.Module):
+class TripletNet(nn.Module):
     """
     Siamese net: takes an image triplet (anchor, positive, negative) and trains the feature extractor to
     minimize the triplet loss function, i.e. the anchor is closer to the positive example than it is to
@@ -104,7 +104,7 @@ class SiameseNetTrip(nn.Module):
     """
 
     def __init__(self, feature_extractor):
-        super(SiameseNetTrip, self).__init__()
+        super(TripletNet, self).__init__()
         self.extractor = feature_extractor
 
     def forward(self, x1, x2, x3):
