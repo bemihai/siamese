@@ -11,7 +11,7 @@ from src.trainer import fit
 from src.networks import FeatureExtractor, SiameseNetBin, ClassificationNet, SiameseNetCont, TripletNet
 from src.osnet import OSBlock, OSNet
 from src.losses import BalancedBCELoss, ContrastiveLoss, TripletLoss
-from src.metrics import BinAccumulatedAccuracy, AccumulatedAccuracy, ContrastiveAccuracy, AverageNonzeroTriplets
+from src.metrics import BinAccumulatedAccuracy, AccumulatedAccuracy, ContrastiveAccuracy, TripletsAccuracy
 
 cudnn.benchmark = True
 do_learn = True
@@ -117,12 +117,12 @@ def fit_triplet_loss():
         train_loader=train_loader,
         val_loader=val_loader,
         model=model,
-        loss_fn=TripletLoss(margin=1.),
+        loss_fn=TripletLoss(margin=1.0),
         optimizer=optimizer,
         n_epochs=n_epochs,
         device=device,
         log_interval=10,
-        metrics=[AverageNonzeroTriplets()],
+        metrics=[TripletsAccuracy(margin=1.0)],
     )
 
     torch.save(model.state_dict(), 'models/triplet_loss.pt')

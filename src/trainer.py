@@ -63,7 +63,7 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
 
         for metric in metrics:
             # target = target[0] if type(target) in (tuple, list) else target
-            metric(outputs, target, loss_outputs)
+            metric(outputs, target)
 
         if batch_idx % log_interval == 0:
             message = 'Train: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -105,7 +105,7 @@ def test_epoch(val_loader, model, loss_fn, device, metrics=None):
 
             for metric in metrics:
                 # target = target[0] if type(target) in (tuple, list) else target
-                metric(outputs, target, loss_outputs)
+                metric(outputs, target)
 
     return val_loss, metrics
 

@@ -1,12 +1,13 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 
 class Metric:
     def __init__(self):
         pass
 
-    def __call__(self, outputs, target, loss):
+    def __call__(self, outputs, target):
         raise NotImplementedError
 
     def reset(self):
@@ -29,7 +30,7 @@ class AccumulatedAccuracy(Metric):
         self.correct = 0
         self.total = 0
 
-    def __call__(self, outputs, target, loss):
+    def __call__(self, outputs, target):
         pred = outputs[0].data.max(1, keepdim=True)[1]
         self.correct += pred.eq(target[0].data.view_as(pred)).cpu().sum()
         self.total += target[0].size(0)
@@ -56,7 +57,7 @@ class ContrastiveAccuracy(Metric):
         self.total = 0
 
     # TODO: use Euclidean distance on normalized features
-    def __call__(self, outputs, target, loss):
+    def __call__(self, outputs, target):
         distance = torch.nn.CosineSimilarity(dim=1)
         pred = distance(outputs[0], outputs[1]) > 0
         self.correct += pred.eq(target[0].data.view_as(pred)).cpu().sum()
@@ -83,7 +84,7 @@ class BinAccumulatedAccuracy(Metric):
         self.total = 0
 
     # TODO: how is accuracy computed ?
-    def __call__(self, outputs, target, loss):
+    def __call__(self, outputs, target):
         target = target[0] if type(target) in (tuple, list) else target
         target_positive = torch.squeeze(target[:, 0])
         target_negative = torch.squeeze(target[:, 1])
@@ -105,24 +106,32 @@ class BinAccumulatedAccuracy(Metric):
 
 
 # TODO: compute accuracy
-class AverageNonzeroTriplets(Metric):
+class TripletsAccuracy(Metric):
     """
-    Counts average number of nonzero triplets found in minibatches.
+    Computes triplets accuracy.
     """
 
-    def __init__(self):
-        super(AverageNonzeroTriplets, self).__init__()
-        self.values = []
+    def __init__(self, margin):
+        super(TripletsAccuracy, self).__init__()
+        self.correct = 0
+        self.total = 0
+        self.margin = margin
 
-    def __call__(self, outputs, target, loss):
-        self.values.append(loss.item())
+    def __call__(self, outputs, target):
+        distance_positive = (outputs[0] - outputs[1]).pow(2).sum(1)
+        distance_negative = (outputs[0] - outputs[2]).pow(2).sum(1)
+        losses = F.relu(distance_positive - distance_negative + self.margin)
+        losses = losses[losses == 0]
+        self.correct += losses.size(0)
+        self.total += outputs[0].size(0)
         return self.value()
 
     def reset(self):
-        self.values = []
+        self.correct = 0
+        self.total = 0
 
     def value(self):
-        return 1 - np.mean(self.values)
+        return 100 * float(self.correct) / self.total
 
     def name(self):
-        return 'Average nonzero triplets'
+        return 'Accuracy'
