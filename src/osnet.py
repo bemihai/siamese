@@ -13,6 +13,8 @@ Small changes from torchreid version:
 from torch import nn
 from torch.nn import functional as F
 
+
+
 """      Basic layers           """
 
 
@@ -105,20 +107,15 @@ class LiteConv3x3(nn.Module):
 class ChannelGate(nn.Module):
     """ A mini-network that generates channel-wise gates conditioned on input tensor (AG) """
 
-    def __init__(self, in_channels, n_gates=None, return_gates=False, reduction=16, layer_norm=False):
+    def __init__(self, in_channels, n_gates=None, return_gates=False, reduction=16):
         super(ChannelGate, self).__init__()
-        # TODO: what is number of gates ?
         if n_gates is None:
             n_gates = in_channels
         self.return_gates = return_gates
         self.global_avgpool = nn.AdaptiveAvgPool2d(1)
-        # TODO: reduction = AG hidden layer size ?
         mid_channels = in_channels // reduction
         self.fc1 = nn.Conv2d(in_channels, mid_channels, 1, bias=True, padding=0)
         self.norm1 = None
-        # TODO: how LayerNorm works ?
-        if layer_norm:
-            self.norm1 = nn.LayerNorm((mid_channels, 1, 1))
         self.relu = nn.ReLU(inplace=True)
         self.fc2 = nn.Conv2d(mid_channels, n_gates, 1, bias=True, padding=0)
         self.gate_activation = nn.ReLU(inplace=True)
@@ -167,8 +164,10 @@ class OSBlock(nn.Module):
 
     def __init__(self, in_channels, out_channels, bottleneck_reduction=4, **kwargs):
         super(OSBlock, self).__init__()
+
         mid_channels = out_channels // bottleneck_reduction
         self.conv1 = Conv1x1(in_channels, mid_channels)
+
         # multi-scale feature learners (exponent T = 4)
         self.conv2a = LiteConv3x3(mid_channels, mid_channels)
         self.conv2b = nn.Sequential(
@@ -186,12 +185,12 @@ class OSBlock(nn.Module):
             LiteConv3x3(mid_channels, mid_channels),
             LiteConv3x3(mid_channels, mid_channels),
         )
+
         # unified aggregation gate
         self.gate = ChannelGate(mid_channels)
         # fusion
         self.conv3 = Conv1x1Linear(mid_channels, out_channels)
         self.downsample = None
-        # TODO: what is downsample doing ?
         if in_channels != out_channels:
             self.downsample = Conv1x1Linear(in_channels, out_channels)
 
