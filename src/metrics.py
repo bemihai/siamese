@@ -56,7 +56,6 @@ class ContrastiveAccuracy(Metric):
         self.correct = 0
         self.total = 0
 
-    # TODO: use Euclidean distance on normalized features
     def __call__(self, outputs, target):
         distance = torch.nn.CosineSimilarity(dim=1)
         pred = distance(outputs[0], outputs[1]) > 0
@@ -83,7 +82,6 @@ class BinAccumulatedAccuracy(Metric):
         self.correct = 0
         self.total = 0
 
-    # TODO: how is accuracy computed ?
     def __call__(self, outputs, target):
         target = target[0] if type(target) in (tuple, list) else target
         target_positive = torch.squeeze(target[:, 0])
@@ -105,7 +103,6 @@ class BinAccumulatedAccuracy(Metric):
         return 'Accuracy'
 
 
-# TODO: compute accuracy
 class TripletsAccuracy(Metric):
     """
     Computes triplets accuracy.

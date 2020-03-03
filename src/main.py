@@ -9,7 +9,6 @@ from torch.backends import cudnn
 from src.datapairs import BalancedPairs, RandomPairs, Triplets
 from src.trainer import fit
 from src.networks import FeatureExtractor, SiameseNetBin, ClassificationNet, SiameseNetCont, TripletNet
-from src.osnet import OSBlock, OSNet
 from src.losses import BalancedBCELoss, ContrastiveLoss, TripletLoss
 from src.metrics import BinAccumulatedAccuracy, AccumulatedAccuracy, ContrastiveAccuracy, TripletsAccuracy
 
@@ -27,9 +26,9 @@ mnist_training = datasets.MNIST('data/', train=True, download=True, transform=tr
 mnist_testing = datasets.MNIST('data/', train=False, download=True, transform=transform)
 
 def fit_cross_entropy():
-    # feature_extractor = FeatureExtractor()
-    feature_extractor = OSNet(blocks=[OSBlock, OSBlock, OSBlock], layers=[2, 2, 2], channels=[16, 64, 96, 128])
-    model = ClassificationNet(feature_extractor, feature_dim=512, n_classes=10).to(device)
+    feature_extractor = FeatureExtractor()
+    # feature_extractor = OSNet(blocks=[OSBlock, OSBlock, OSBlock], layers=[2, 2, 2], channels=[16, 64, 96, 128])
+    model = ClassificationNet(feature_extractor, feature_dim=2, n_classes=10).to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     train_loader = DataLoader(mnist_training, batch_size=batch_size, shuffle=True, **kwargs)
@@ -129,7 +128,7 @@ def fit_triplet_loss():
 
 
 if __name__ == '__main__':
-    fit_triplet_loss()
+    fit_cross_entropy()
 
 
 

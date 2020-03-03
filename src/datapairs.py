@@ -248,15 +248,3 @@ class BalancedBatchSampler(BatchSampler):
     def __len__(self):
         return self.n_dataset // self.batch_size
 
-# get MNIST images and labels
-# transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-#
-# mnist_data = datasets.MNIST(
-#     '../data',
-#     train=False,
-#     download=True,
-#     transform=transform,
-# )
-#
-# data = Triplets(mnist_data)
-# print(len(data))
