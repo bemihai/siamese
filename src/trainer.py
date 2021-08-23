@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
+
 def fit(train_loader, val_loader, model, loss_fn, optimizer, n_epochs, device, log_interval, metrics=None):
     """
     Loaders, model, loss function and metrics should work together for a given task,

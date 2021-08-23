@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 mnist_classes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
+
 def extract_features(dataloader, model):
     with torch.no_grad():
         model.eval()
@@ -20,6 +21,7 @@ def extract_features(dataloader, model):
             labels[k:k+len(images)] = target.numpy()
             k += len(images)
     return features, labels
+
 
 def plot_features(features, targets, xlim=None, ylim=None):
     plt.figure(figsize=(10,10))

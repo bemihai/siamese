@@ -25,9 +25,11 @@ transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1
 mnist_training = datasets.MNIST('data/', train=True, download=True, transform=transform)
 mnist_testing = datasets.MNIST('data/', train=False, download=True, transform=transform)
 
+
 def fit_cross_entropy():
     feature_extractor = FeatureExtractor()
-    # feature_extractor = OSNet(blocks=[OSBlock, OSBlock, OSBlock], layers=[2, 2, 2], channels=[16, 64, 96, 128])
+    # feature_extractor = OSNet(blocks=[OSBlock, OSBlock, OSBlock], layers=[2, 2, 2],
+    # channels=[16, 64, 96, 128])
     model = ClassificationNet(feature_extractor, feature_dim=2, n_classes=10).to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
